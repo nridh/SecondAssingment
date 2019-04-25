@@ -1,63 +1,92 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
+
+#include <sys/types.h> 
+
 #include <sys/socket.h>
+
+#include <string.h>
+
+#include <stdlib.h>
+
 #include <netinet/in.h>
-#include <netdb.h> 
 
-void error(const char *msg)
+#include <unistd.h> 
+
+int main( int argc, char *argv[] )
+
 {
-    perror(msg);
-    exit(0);
-}
+	// Variables 
+	int sock ;
+	struct sockaddr_in server;
+	int mysock;
+	char buff [1024];
+	int rval;
+	char server_message[256] ;
 
-int main(int argc, char *argv[])
-{
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
+	// Create Socket
+	sock = socket(AF_INET, SOCK_STREAM , 0);
+	if(sock < 0) {
+		perror("Failed to create socket");
+		exit(1);
+	}
 
-    char buffer[256];
-    if (argc < 3) {
-       fprintf(stderr,"usage %s hostname port\n", argv[0]);
-       exit(0);
-    }
-    portno = atoi(argv[2]);
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
-    server = gethostbyname(argv[1]);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
-        error("ERROR connecting");
-    printf("Client: ");
-    while(1)
-    {
-        bzero(buffer,255);
-        fgets(buffer,255,stdin);
-        n = write(sockfd,buffer,strlen(buffer));
-        if (n < 0) 
-             error("ERROR writing to socket");
-        bzero(buffer,255);
-        n = read(sockfd,buffer,255);
-        if (n < 0) 
-             error("ERROR reading from socket");
-        printf("Server : %s\n",buffer);
-        int i = strncmp("Bye" , buffer , 3);
-        if(i == 0)
-               break;
-    }
-    close(sockfd);
-    return 0;
+
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port =htons(22000);
+
+	// Call Bind 
+	if(bind(sock, (struct sockaddr *)&server, sizeof(server)))
+	{
+		perror("Bind Failed");
+		exit(1);
+	}
+
+	// Listen
+	listen(sock , 10);
+
+	// Accept
+
+	do{
+		mysock = accept(sock , (struct sockaddr *) 0, 0);	
+			 
+	        Previous:
+	 
+		if(mysock == -1)
+		{
+			perror("accept failed");
+		}
+		else
+		{
+
+		memset(buff, 0, sizeof(buff));
+
+		if((rval = recv(mysock, buff, sizeof(buff), 0)) < 0)
+		{ perror("reading stream message failed");    }
+		
+		else if (rval == 0)
+		{ printf("Ending connection");  }
+
+		else 
+  		{
+
+        	 recv(mysock, buff, sizeof(buff), 1);
+		 printf("From Client: %s", buff);
+		 recv(mysock, buff, sizeof(buff), 0);
+		 printf("%s",buff);
+		 printf("\n");
+		 
+		//goto Previous; 
+		
+		scanf ("%[^\n]%*c", server_message);
+			 
+                send(mysock,server_message,strlen(server_message),0);
+		}
+		
+		close(mysock);
+		}
+	}while(1);
+
+	return 0;
+
 }
